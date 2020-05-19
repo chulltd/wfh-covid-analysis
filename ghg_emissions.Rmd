@@ -52,7 +52,7 @@ caiso_2020 <- read.csv("caiso_2020.csv")
 
 ```
 
-Reshape, clean and condense into hourly -- example
+Reshape, clean and condense into hourly 
 ```{r}
 data_2019 <- melt(caiso_2019, id = c("Date"))
 data_2019 <- data_2019 %>%
@@ -79,3 +79,82 @@ ggplot(tail(data_2019,240)) +
 ggplot(tail(data_2020,240)) + 
   geom_line(aes(x = time, y = CO2_sum, color=Date , group=Date))
 ```
+
+
+Analysis of diff b/t 2020 and 2019
+```{r}
+library(lubridate)
+combined_data = cbind(data_2019, data_2020)  %>%
+  select(-c(Date1, time1)) %>%
+  ungroup(Date)%>%
+  mutate(CO2_diff = CO2_sum1 - CO2_sum, 
+         CO2_diff = replace_na(CO2_diff, 0),
+         Date = mdy(Date),
+         time = as.numeric(time))
+         #CO2_diff = 2020 - 2019  
+  
+diff_by_day = combined_data %>%
+  group_by(Date) %>%
+  summarise("CO2_diff_by_day" = sum(CO2_diff))
+
+diff_by_hour = combined_data %>% 
+  group_by(time) %>% 
+  summarise("CO2_diff_by_hour" = mean(CO2_diff)) 
+
+
+
+```
+
+```{r}
+summary(combined_data$CO2_diff) # mostly > 0
+```
+
+
+
+
+Graphing 
+```{r}
+ggplot(combined_data) + 
+  geom_line(aes(x = time, y = CO2_diff, color=Date , group=Date)) + #all dates
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", size = 1) +
+  ggtitle("Differences by Time (2020 minus 2019), Mar 1 - May 7") +
+  ylab("Difference in CO2 emissions") 
+ggsave("diff_by_hour_all_days.PNG")
+
+ggplot(head(combined_data,360)) + 
+  geom_line(aes(x = time, y = CO2_diff, color=Date , group=Date)) + #first 15
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", size = 1) +
+  ggtitle("Differences by Time (2020 minus 2019), Mar 1 - Mar 15") +
+  ylab("Difference in CO2 emissions") 
+ggsave("diff_by_hour_first_15_days.PNG")
+
+ggplot(tail(combined_data,360)) + 
+  geom_line(aes(x = time, y = CO2_diff, color=Date , group=Date)) + #final 15
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", size = 1) +
+  ggtitle("Differences by Time (2020 minus 2019), Apr 23 - May 7") +
+  ylab("Difference in CO2 emissions") 
+ggsave("diff_by_hour_final_15_days.PNG")
+
+```
+Differences by day and by hour
+
+```{r}
+ggplot(diff_by_day) +
+  geom_point(aes(x = Date, y = CO2_diff_by_day)) +
+  geom_smooth(aes(x = Date, y = CO2_diff_by_day)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", size = 1) +
+  ylab("Difference in CO2 emissions") +
+  ggtitle("Differences in CO2 emissions by day (2020 minus 2019)")
+ggsave("diff_by_day.png")
+
+ggplot(diff_by_hour) +
+  geom_point(aes(x = time, y = CO2_diff_by_hour)) +
+  geom_smooth(aes(x = time, y = CO2_diff_by_hour)) + #for some reason the geom_smooth is not showing up for me?
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", size = 1) +
+  ylab("Difference in CO2 emissions") +
+  ggtitle("Avg differences in CO2 emissions by hour (2020 minus 2019)")
+ggsave("diff_by_hour.png")
+
+```
+
+
